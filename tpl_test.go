@@ -2,8 +2,6 @@ package main
 
 import (
 	"bytes"
-	"io/ioutil"
-	"os"
 	"strings"
 	"testing"
 
@@ -18,35 +16,44 @@ func TestYamlTemplate(t *testing.T) {
 	}
 
 	tests := []io{
-		io{
+		{
 			Input:    "test: value",
 			Template: "{{.test}}",
 			Output:   "value",
 		},
-		io{
+		{
 			Input:    "name: Max\nage: 15",
 			Template: "Hello {{.name}}, of {{.age}} years old",
 			Output:   "Hello Max, of 15 years old",
 		},
-		io{
+		{
 			Input:    "legumes:\n  - potato\n  - onion\n  - cabbage",
 			Template: "Legumes:{{ range $index, $el := .legumes}}{{if $index}},{{end}} {{$el}}{{end}}",
 			Output:   "Legumes: potato, onion, cabbage",
 		},
+		{
+			Input: `itchy: |
+  AAAA
+  BBBB
+  CCCC`,
+			Template: "{{.itchy}}",
+			Output: `AAAA
+BBBB
+CCCC`,
+		},
+		{
+			Input:    `itchy: "AAAA\nBBBB\nCCCC"`,
+			Template: "{{ .itchy | prefixLines \"  \" }}",
+			Output: `  AAAA
+  BBBB
+  CCCC`,
+		},
 	}
 
 	for _, test := range tests {
-		tpl_file, err := ioutil.TempFile("", "")
-		assert.Nil(t, err)
-		defer func() { os.Remove(tpl_file.Name()) }()
-
-		_, err = tpl_file.WriteString(test.Template)
-		assert.Nil(t, err)
-		tpl_file.Close()
-
 		output := bytes.NewBuffer(nil)
-		err = ExecuteTemplates(strings.NewReader(test.Input), output,
-			tpl_file.Name())
+		err := ExecuteTemplates(strings.NewReader(test.Input), output,
+			test.Template)
 		assert.Nil(t, err)
 
 		assert.Equal(t, test.Output, output.String())
